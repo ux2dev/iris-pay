@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Ux2Dev\Iris\Laravel;
 
 use Illuminate\Support\ServiceProvider;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 
 class IrisServiceProvider extends ServiceProvider
 {
@@ -13,7 +16,12 @@ class IrisServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/config/iris.php', 'iris');
 
         $this->app->singleton(IrisManager::class, function ($app) {
-            return new IrisManager($app['config']->get('iris'));
+            return new IrisManager(
+                $app['config']->get('iris'),
+                $app->bound(ClientInterface::class) ? $app->make(ClientInterface::class) : null,
+                $app->bound(RequestFactoryInterface::class) ? $app->make(RequestFactoryInterface::class) : null,
+                $app->bound(StreamFactoryInterface::class) ? $app->make(StreamFactoryInterface::class) : null,
+            );
         });
 
         $this->app->alias(IrisManager::class, 'iris');
