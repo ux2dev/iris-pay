@@ -31,6 +31,9 @@ final class UserScope
         private readonly Credentials $credentials,
         private readonly string $userHash,
     ) {
+        // Validates the hash once for every user-scoped resource, reusing
+        // Credentials::user() rather than duplicating its regex here.
+        $this->credentials->user($this->userHash);
     }
 
     public function userHash(): string

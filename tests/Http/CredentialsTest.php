@@ -67,3 +67,28 @@ test('rejects an agentHash containing a newline', function () {
     expect(fn () => credentialsFor(agent: "a1\nX-Evil: 1")->agent())
         ->toThrow(ConfigurationException::class, 'agentHash contains invalid characters');
 });
+
+test('rejects an adminHash containing a newline', function () {
+    expect(fn () => credentialsFor(admin: "ad1\r\nX-Evil: 1")->admin())
+        ->toThrow(ConfigurationException::class, 'adminHash contains invalid characters');
+});
+
+test('rejects a publicHash containing a newline', function () {
+    expect(fn () => credentialsFor(public: "p1\r\nX-Evil: 1")->publicHash())
+        ->toThrow(ConfigurationException::class, 'publicHash contains invalid characters');
+});
+
+test('both rejects a userHash containing a newline', function () {
+    expect(fn () => credentialsFor(agent: 'a1')->both("u1\r\nX-Evil: 1"))
+        ->toThrow(ConfigurationException::class, 'userHash contains invalid characters');
+});
+
+test('adminAgent rejects an adminHash containing a newline', function () {
+    expect(fn () => credentialsFor(agent: 'a1', admin: "ad1\r\nX-Evil: 1")->adminAgent())
+        ->toThrow(ConfigurationException::class, 'adminHash contains invalid characters');
+});
+
+test('rejects a userHash containing a bare carriage return', function () {
+    expect(fn () => credentialsFor(agent: 'a1')->user("u1\rX-Evil: 1"))
+        ->toThrow(ConfigurationException::class, 'userHash contains invalid characters');
+});

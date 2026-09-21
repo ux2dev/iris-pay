@@ -13,10 +13,12 @@ use Ux2Dev\Iris\Config\MerchantConfig;
 use Ux2Dev\Iris\Enum\Environment;
 use Ux2Dev\Iris\Exception\ApiClientException;
 use Ux2Dev\Iris\Exception\ApiServerException;
+use Ux2Dev\Iris\Exception\ConfigurationException;
 use Ux2Dev\Iris\Exception\InvalidResponseException;
 use Ux2Dev\Iris\Exception\NetworkException;
 use Ux2Dev\Iris\Http\Credentials;
 use Ux2Dev\Iris\Http\IrisTransport;
+use Ux2Dev\Iris\Iris;
 use Ux2Dev\Iris\Resources\Agent;
 use Ux2Dev\Iris\Resources\PayByLink;
 use Ux2Dev\Iris\Resources\User\Agent as UserAgent;
@@ -194,13 +196,28 @@ test('exception responseData does not contain body', function () {
 
 // --- CRLF Header Injection Prevention ---
 //
-// Header-injection rejection for both agentHash and userHash is fully
-// covered at the Credentials layer in tests/Http/CredentialsTest.php
-// ("rejects an agentHash containing a newline", "rejects a userHash
-// containing a newline"). The old client classes validated these in their
-// constructor / method arguments; the new resources delegate entirely to
-// Credentials::require(), so re-asserting the same regex check here through
-// a resource call would be a pure duplicate of that coverage.
+// Header-injection rejection for agentHash, adminHash, publicHash and
+// userHash (including every credential regime and a bare \r) is fully unit
+// tested at the Credentials layer in tests/Http/CredentialsTest.php. The one
+// case kept here is an end-to-end check that a CRLF-bearing user hash is
+// rejected before any request is made, going through Iris::user() so it
+// also covers UserScope's constructor guard (which routes every
+// user-scoped resource's hash through Credentials::user() once, up front).
+
+test('Iris::user() rejects a CRLF-bearing userHash before any request is made', function () {
+    $mock = new MockHandler([]);
+    $factory = new HttpFactory();
+    $config = new MerchantConfig(environment: Environment::Development, agentHash: 'test-agent');
+
+    $iris = new Iris(
+        $config,
+        new Client(['handler' => HandlerStack::create($mock)]),
+        $factory,
+        $factory,
+    );
+
+    $iris->user("user-hash\r\nX-Evil: 1");
+})->throws(ConfigurationException::class, 'userHash contains invalid characters');
 
 // --- WebhookParser SDK Exceptions ---
 
