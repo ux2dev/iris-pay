@@ -8,17 +8,10 @@ test('the manifest covers all 56 endpoint methods', function () use ($manifest) 
     expect($manifest)->toHaveCount(56);
 });
 
-test('every implemented resource exposes its manifest methods', function () use ($manifest) {
-    $checked = 0;
-
+test('every manifest method exists on its resource', function () use ($manifest) {
     foreach ($manifest as [$class, $method, $requiredParams]) {
-        if (! class_exists($class)) {
-            continue;
-        }
-
-        expect(method_exists($class, $method))->toBeTrue(
-            "{$class}::{$method}() is missing",
-        );
+        expect(class_exists($class))->toBeTrue("{$class} is missing");
+        expect(method_exists($class, $method))->toBeTrue("{$class}::{$method}() is missing");
 
         $reflection = new ReflectionMethod($class, $method);
         expect($reflection->isPublic())->toBeTrue("{$class}::{$method}() must be public");
@@ -26,9 +19,5 @@ test('every implemented resource exposes its manifest methods', function () use 
             $requiredParams,
             "{$class}::{$method}() should take {$requiredParams} required parameters",
         );
-
-        $checked++;
     }
-
-    expect($checked)->toBeGreaterThanOrEqual(0);
 });
