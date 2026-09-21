@@ -62,7 +62,7 @@ final class IrisTransport
      */
     public function post(string $path, array $body, array $headers = []): array
     {
-        return $this->parseJsonResponse($this->send($this->jsonRequest('POST', $path, $body, $headers)));
+        return $this->parseJsonResponse($this->send($this->jsonRequest('POST', $path, $body, $headers, skipEmptyBody: false)));
     }
 
     /**
@@ -83,7 +83,7 @@ final class IrisTransport
      */
     public function postVoid(string $path, array $body, array $headers = []): void
     {
-        $this->assertSuccess($this->send($this->jsonRequest('POST', $path, $body, $headers)));
+        $this->assertSuccess($this->send($this->jsonRequest('POST', $path, $body, $headers, skipEmptyBody: false)));
     }
 
     /** @param array<string, string> $headers */
@@ -112,7 +112,7 @@ final class IrisTransport
      */
     public function put(string $path, array $body = [], array $headers = [], array $query = []): array
     {
-        return $this->parseJsonResponse($this->send($this->jsonRequest('PUT', $path, $body, $headers, $query)));
+        return $this->parseJsonResponse($this->send($this->jsonRequest('PUT', $path, $body, $headers, $query, skipEmptyBody: true)));
     }
 
     /**
@@ -122,7 +122,7 @@ final class IrisTransport
      */
     public function putVoid(string $path, array $body = [], array $headers = [], array $query = []): void
     {
-        $this->assertSuccess($this->send($this->jsonRequest('PUT', $path, $body, $headers, $query)));
+        $this->assertSuccess($this->send($this->jsonRequest('PUT', $path, $body, $headers, $query, skipEmptyBody: true)));
     }
 
     /** @param array<string, string> $headers */
@@ -145,12 +145,13 @@ final class IrisTransport
         array $body,
         array $headers,
         array $query = [],
+        bool $skipEmptyBody = false,
     ): RequestInterface {
         $request = $this->requestFactory->createRequest($method, $this->buildUrl($path, $query))
             ->withHeader('Content-Type', 'application/json')
             ->withHeader('Accept', 'application/json');
 
-        if ($body !== []) {
+        if (!$skipEmptyBody || $body !== []) {
             $request = $request->withBody(
                 $this->streamFactory->createStream(json_encode($body, JSON_THROW_ON_ERROR)),
             );

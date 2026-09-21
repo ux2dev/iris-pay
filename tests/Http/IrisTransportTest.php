@@ -66,6 +66,49 @@ test('post sends a JSON body', function () {
         ->and($history[0]['request']->getHeaderLine('Content-Type'))->toBe('application/json');
 });
 
+test('post sends a body and Content-Type even for an empty array', function () {
+    $history = [];
+    $transport = makeTransport([new Response(200, [], '{}')], $history);
+
+    $transport->post('/thing', []);
+
+    expect($history[0]['request']->getMethod())->toBe('POST')
+        ->and((string) $history[0]['request']->getBody())->toBe('[]')
+        ->and($history[0]['request']->getHeaderLine('Content-Type'))->toBe('application/json');
+});
+
+test('postEmpty sends no body and decodes a JSON object', function () {
+    $history = [];
+    $transport = makeTransport([new Response(200, [], '{"ok":true}')], $history);
+
+    $result = $transport->postEmpty('/thing');
+
+    expect($history[0]['request']->getMethod())->toBe('POST')
+        ->and((string) $history[0]['request']->getBody())->toBe('')
+        ->and($result)->toBe(['ok' => true]);
+});
+
+test('postVoid sends a JSON body and returns nothing', function () {
+    $history = [];
+    $transport = makeTransport([new Response(204)], $history);
+
+    $transport->postVoid('/thing', ['sum' => 10]);
+
+    expect($history[0]['request']->getMethod())->toBe('POST')
+        ->and((string) $history[0]['request']->getBody())->toBe('{"sum":10}');
+});
+
+test('put sends a JSON body and decodes a JSON object', function () {
+    $history = [];
+    $transport = makeTransport([new Response(200, [], '{"ok":true}')], $history);
+
+    $result = $transport->put('/thing', ['sum' => 10]);
+
+    expect($history[0]['request']->getMethod())->toBe('PUT')
+        ->and((string) $history[0]['request']->getBody())->toBe('{"sum":10}')
+        ->and($result)->toBe(['ok' => true]);
+});
+
 test('postForString trims surrounding quotes', function () {
     $transport = makeTransport([new Response(200, [], '"token-value"')]);
 
