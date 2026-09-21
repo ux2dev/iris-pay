@@ -3,7 +3,11 @@
 declare(strict_types=1);
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\HttpFactory;
+use GuzzleHttp\Psr7\Response;
 use Ux2Dev\Iris\Config\MerchantConfig;
 use Ux2Dev\Iris\Enum\Environment;
 use Ux2Dev\Iris\Iris;
@@ -21,6 +25,31 @@ function makeIris(): Iris
             adminHash: 'admin-1',
         ),
         new Client(),
+        $factory,
+        $factory,
+    );
+}
+
+/**
+ * @param Response[] $responses
+ * @param array<int, array{request: \Psr\Http\Message\RequestInterface}>|null $history
+ */
+function mockedIris(array $responses, ?array &$history = null): Iris
+{
+    $stack = HandlerStack::create(new MockHandler($responses));
+    if ($history !== null) {
+        $stack->push(Middleware::history($history));
+    }
+    $factory = new HttpFactory();
+
+    return new Iris(
+        new MerchantConfig(
+            environment: Environment::Development,
+            publicHash: 'pub-1',
+            agentHash: 'agent-1',
+            adminHash: 'admin-1',
+        ),
+        new Client(['handler' => $stack]),
         $factory,
         $factory,
     );
@@ -78,4 +107,40 @@ test('returns a distinct scope per user hash', function () {
 
 test('exposes the config', function () {
     expect(makeIris()->config()->publicHash)->toBe('pub-1');
+});
+
+test('payByLink requests go to the PayByLink host', function () {
+    $history = [];
+    $iris = mockedIris([
+        new Response(200, [], json_encode([['bankHash' => 'b1', 'name' => 'Bank One']])),
+    ], $history);
+
+    $iris->payByLink()->getBanks();
+
+    expect($history[0]['request']->getUri()->__toString())
+        ->toStartWith(Environment::Development->payByLinkBaseUrl());
+});
+
+test('user-scoped requests go to the core host', function () {
+    $history = [];
+    $iris = mockedIris([
+        new Response(200, [], '[]'),
+    ], $history);
+
+    $iris->user('u1')->accounts()->listIbans();
+
+    expect($history[0]['request']->getUri()->__toString())
+        ->toStartWith(Environment::Development->webSdkBaseUrl());
+});
+
+test('root resource requests other than payByLink go to the core host', function () {
+    $history = [];
+    $iris = mockedIris([
+        new Response(200, [], json_encode(['pages' => 1, 'size' => 10, 'currPage' => 0])),
+    ], $history);
+
+    $iris->agent()->listUsers();
+
+    expect($history[0]['request']->getUri()->__toString())
+        ->toStartWith(Environment::Development->webSdkBaseUrl());
 });
