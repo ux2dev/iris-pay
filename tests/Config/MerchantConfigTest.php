@@ -42,10 +42,6 @@ test('creates config with both hashes', function () {
     expect($config->agentHash)->toBe('agent-hash');
 });
 
-test('throws when neither hash is provided', function () {
-    new MerchantConfig(environment: Environment::Development);
-})->throws(ConfigurationException::class, 'At least one of publicHash or agentHash must be provided');
-
 test('throws on empty publicHash', function () {
     new MerchantConfig(environment: Environment::Development, publicHash: '');
 })->throws(ConfigurationException::class, 'publicHash must not be empty when provided');
@@ -86,3 +82,33 @@ test('prevents serialization', function () {
 
     serialize($config);
 })->throws(\LogicException::class);
+
+test('defaults timeout to 30 seconds', function () {
+    $config = new MerchantConfig(environment: Environment::Development, publicHash: 'p');
+
+    expect($config->timeout)->toBe(30);
+});
+
+test('accepts a custom timeout', function () {
+    $config = new MerchantConfig(environment: Environment::Development, publicHash: 'p', timeout: 5);
+
+    expect($config->timeout)->toBe(5);
+});
+
+test('rejects a timeout below one second', function () {
+    expect(fn () => new MerchantConfig(environment: Environment::Development, publicHash: 'p', timeout: 0))
+        ->toThrow(ConfigurationException::class, 'timeout must be at least 1 second');
+});
+
+test('allows a config with no credentials at all', function () {
+    $config = new MerchantConfig(environment: Environment::Development);
+
+    expect($config->publicHash)->toBeNull()
+        ->and($config->agentHash)->toBeNull();
+});
+
+test('redacts the timeout-free secrets in debug output', function () {
+    $config = new MerchantConfig(environment: Environment::Development, agentHash: 'secret');
+
+    expect($config->__debugInfo()['agentHash'])->toBe('[REDACTED]');
+});

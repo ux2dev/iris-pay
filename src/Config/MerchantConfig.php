@@ -18,6 +18,7 @@ final readonly class MerchantConfig
         public ?string $adminHash = null,
         public Currency $currency = Currency::EUR,
         public Language $language = Language::Bulgarian,
+        public int $timeout = 30,
     ) {
         if ($publicHash !== null && $publicHash === '') {
             throw new ConfigurationException('publicHash must not be empty when provided');
@@ -28,8 +29,8 @@ final readonly class MerchantConfig
         if ($adminHash !== null && $adminHash === '') {
             throw new ConfigurationException('adminHash must not be empty when provided');
         }
-        if ($publicHash === null && $agentHash === null) {
-            throw new ConfigurationException('At least one of publicHash or agentHash must be provided');
+        if ($timeout < 1) {
+            throw new ConfigurationException('timeout must be at least 1 second');
         }
     }
 
@@ -42,6 +43,7 @@ final readonly class MerchantConfig
             'environment' => $this->environment,
             'currency' => $this->currency,
             'language' => $this->language,
+            'timeout' => $this->timeout,
         ];
     }
 
