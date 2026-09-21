@@ -50,9 +50,8 @@ return [
     [Reports::class, 'activeUsersDetails', 1],
     [Reports::class, 'bankMaintenance', 0],
 
-    // --- Root: ConsentGate (2) ---
+    // --- Root: ConsentGate (1) ---
     [ConsentGate::class, 'createRequest', 1],
-    [ConsentGate::class, 'getConsents', 0],
 
     // --- User: Accounts (12) ---
     [UserAccounts::class, 'listBanks', 0],
@@ -96,6 +95,7 @@ return [
     // --- User: Reports (1) ---
     [UserReports::class, 'listPayments', 0],
 
-    // --- User: ConsentGate (1) ---
+    // --- User: ConsentGate (2) ---
     [UserConsentGate::class, 'uiConsentRequest', 0],
+    [UserConsentGate::class, 'getConsents', 0],
 ];
