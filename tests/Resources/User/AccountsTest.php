@@ -8,10 +8,13 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\Psr7\Response;
+use Ux2Dev\Iris\Api\Request\CreateConsentData;
 use Ux2Dev\Iris\Api\Response\BalanceList;
 use Ux2Dev\Iris\Api\Response\BankAccount;
 use Ux2Dev\Iris\Api\Response\BankInfo;
+use Ux2Dev\Iris\Api\Response\BankSca;
 use Ux2Dev\Iris\Api\Response\Consent;
+use Ux2Dev\Iris\Api\Response\TokenInfo;
 use Ux2Dev\Iris\Api\Response\Transaction;
 use Ux2Dev\Iris\Config\MerchantConfig;
 use Ux2Dev\Iris\Enum\Environment;
@@ -73,6 +76,44 @@ test('listBanks appends the country query when given', function () {
     expect($history[0]['request']->getUri()->getQuery())->toBe('country=BG');
 });
 
+test('getBank hits the nested bank path', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], json_encode([
+        'bankHash' => 'bank-1', 'name' => 'Test Bank', 'urlLogo' => null, 'urlDarkLogo' => null,
+        'sca' => 'REDIRECT_URL', 'firstStepInstruction' => null, 'directPayment' => true,
+        'paymentRequiresIban' => false, 'fullName' => 'Test Bank Full', 'bic' => 'TESTBG',
+        'services' => 'AIS,PIS', 'country' => 'bulgaria', 'videos' => [],
+        'consentRequiresIban' => false, 'consentRequiresPsu' => true,
+        'paymentRequiresAuthorization' => true, 'consentRequiresAuthorization' => false,
+        'paymentRequiresPsu' => true, 'psuType' => 'USERNAME',
+        'budgetPaymentsRequirePaymentCategory' => false, 'aisAvailable' => true, 'pisAvailable' => true,
+    ]))], $history);
+
+    expect($resource->getBank('bank-1'))->toBeInstanceOf(BankInfo::class)
+        ->and($history[0]['request']->getMethod())->toBe('GET')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/8/banks/bank-1')
+        ->and($history[0]['request']->getHeaderLine('x-user-hash'))->toBe('user-1')
+        ->and($history[0]['request']->getUri()->getQuery())->toBe('');
+});
+
+test('getBank appends the country query when given and omits it otherwise', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], json_encode([
+        'bankHash' => 'bank-1', 'name' => 'Test Bank', 'urlLogo' => null, 'urlDarkLogo' => null,
+        'sca' => 'REDIRECT_URL', 'firstStepInstruction' => null, 'directPayment' => true,
+        'paymentRequiresIban' => false, 'fullName' => 'Test Bank Full', 'bic' => 'TESTBG',
+        'services' => 'AIS,PIS', 'country' => 'bulgaria', 'videos' => [],
+        'consentRequiresIban' => false, 'consentRequiresPsu' => true,
+        'paymentRequiresAuthorization' => true, 'consentRequiresAuthorization' => false,
+        'paymentRequiresPsu' => true, 'psuType' => 'USERNAME',
+        'budgetPaymentsRequirePaymentCategory' => false, 'aisAvailable' => true, 'pisAvailable' => true,
+    ]))], $history);
+
+    $resource->getBank('bank-1', 'BG');
+
+    expect($history[0]['request']->getUri()->getQuery())->toBe('country=BG');
+});
+
 test('listIbans adds the consent-details header when asked', function () {
     $history = [];
     $resource = userAccounts([new Response(200, [], '[]')], $history);
@@ -110,6 +151,27 @@ test('getBalance returns BalanceList', function () {
     expect($resource->getBalance(42))->toBeInstanceOf(BalanceList::class);
 });
 
+test('listTransactions hits the flat transactions path with the given dates', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], '{}')], $history);
+
+    $resource->listTransactions(42, dateFrom: '2025-01-01', dateTo: '2025-02-01');
+
+    expect($history[0]['request']->getMethod())->toBe('GET')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/8/transactions/42')
+        ->and($history[0]['request']->getHeaderLine('x-user-hash'))->toBe('user-1')
+        ->and($history[0]['request']->getUri()->getQuery())->toBe('dateFrom=2025-01-01&dateTo=2025-02-01');
+});
+
+test('listTransactions omits dateFrom and dateTo when not given', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], '{}')], $history);
+
+    $resource->listTransactions(42);
+
+    expect($history[0]['request']->getUri()->getQuery())->toBe('');
+});
+
 test('listPagedTransactions forwards nextPageUrl', function () {
     $history = [];
     $resource = userAccounts([new Response(200, [], '{}')], $history);
@@ -128,6 +190,47 @@ test('getTransaction hits the nested transaction path', function () {
 
     expect($resource->getTransaction(42, 'tx-9'))->toBeInstanceOf(Transaction::class)
         ->and($history[0]['request']->getUri()->getPath())->toBe('/api/8/transactions/42/tx-9');
+});
+
+test('listTokens hits the tokens path', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], json_encode([[
+        'id' => 1, 'accountId' => 2, 'token' => 'tok-1', 'type' => 'AUTH_AIS',
+        'bankId' => 3, 'psuId' => 4, 'psuIdentifier' => 'psu-1', 'dateCreated' => '2025-01-01T00:00:00Z',
+    ]]))], $history);
+
+    expect($resource->listTokens()[0])->toBeInstanceOf(TokenInfo::class)
+        ->and($history[0]['request']->getMethod())->toBe('GET')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/8/tokens')
+        ->and($history[0]['request']->getHeaderLine('x-user-hash'))->toBe('user-1')
+        ->and($history[0]['request']->getUri()->getQuery())->toBe('');
+});
+
+test('listTokens appends the country query when given and omits it otherwise', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], '[]')], $history);
+
+    $resource->listTokens('BG');
+
+    expect($history[0]['request']->getUri()->getQuery())->toBe('country=BG');
+});
+
+test('createConsent posts the encoded data to the consent path', function () {
+    $history = [];
+    $resource = userAccounts([new Response(200, [], json_encode([
+        'startUrl' => 'https://bank.test/start', 'endUrl' => 'https://bank.test/end',
+        'formText' => null, 'loadingText' => null, 'psuIdType' => 'USERNAME',
+        'sca' => 'REDIRECT_URL', 'gatherPsu' => false, 'hasAuthorization' => false,
+        'externalApp' => false, 'authorizationId' => null,
+    ]))], $history);
+
+    $data = new CreateConsentData(bankHash: 'bank-1', iban: 'BG12TEST');
+
+    expect($resource->createConsent($data))->toBeInstanceOf(BankSca::class)
+        ->and($history[0]['request']->getMethod())->toBe('POST')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/8/consent')
+        ->and($history[0]['request']->getHeaderLine('x-user-hash'))->toBe('user-1')
+        ->and((string) $history[0]['request']->getBody())->toBe(json_encode($data->toArray()));
 });
 
 test('getConsents unwraps a consents envelope', function () {
