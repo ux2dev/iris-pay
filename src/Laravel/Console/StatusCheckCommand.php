@@ -25,7 +25,7 @@ class StatusCheckCommand extends Command
             : $manager->payByLink();
 
         try {
-            $response = $client->getPaymentStatus($paymentHash);
+            $response = $client->getStatus($paymentHash);
         } catch (\Throwable $e) {
             $this->error("Failed to check status: {$e->getMessage()}");
 

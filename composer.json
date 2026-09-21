@@ -34,7 +34,7 @@
                 "Ux2Dev\\Iris\\Laravel\\IrisServiceProvider"
             ],
             "aliases": {
-                "Iris": "Ux2Dev\\Iris\\Laravel\\IrisFacade"
+                "Iris": "Ux2Dev\\Iris\\Laravel\\Facades\\Iris"
             }
         }
     },

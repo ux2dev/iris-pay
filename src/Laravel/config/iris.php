@@ -11,6 +11,7 @@ return [
             'environment' => env('IRIS_ENVIRONMENT', 'production'),
             'currency' => env('IRIS_CURRENCY', 'EUR'),
             'language' => env('IRIS_LANGUAGE', 'bg'),
+            'timeout' => env('IRIS_TIMEOUT', 30),
         ],
     ],
 
