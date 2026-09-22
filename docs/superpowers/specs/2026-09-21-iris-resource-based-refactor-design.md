@@ -69,11 +69,13 @@ public function __construct(
 ) {}
 
 public function get(string $path, array $headers = [], array $query = []): array
+public function getRaw(string $path, array $headers = []): string
 public function post(string $path, array $body, array $headers = []): array
 public function postEmpty(string $path, array $headers = []): array
+public function postVoid(string $path, array $body, array $headers = []): void
 public function postForString(string $path, array $headers = []): string
 public function put(string $path, array $body = [], array $headers = [], array $query = []): array
-public function putVoid(string $path, array $headers = [], array $query = []): void
+public function putVoid(string $path, array $body = [], array $headers = [], array $query = []): void
 public function delete(string $path, array $headers = []): void
 ```
 
@@ -121,7 +123,7 @@ Split rule: **which user the call concerns**, not which header authorizes it.
 `reports()->listPayments()` therefore sits under `user()` even though it sends
 `x-agent-hash` and carries `userHash` in the body.
 
-Root — `Ux2Dev\Iris\Resources\` (23 methods):
+Root — `Ux2Dev\Iris\Resources\` (22 methods):
 
 | Resource | n | Methods |
 |---|---|---|
@@ -131,9 +133,9 @@ Root — `Ux2Dev\Iris\Resources\` (23 methods):
 | `payments()` | 1 | statusByHook |
 | `bulkPayments()` | 2 | status, search |
 | `reports()` | 4 | searchPayments, activeUsers, activeUsersDetails, bankMaintenance |
-| `consentGate()` | 2 | createRequest, getConsents |
+| `consentGate()` | 1 | createRequest |
 
-User scope — `Ux2Dev\Iris\Resources\User\` (33 methods), reached via
+User scope — `Ux2Dev\Iris\Resources\User\` (34 methods), reached via
 `$iris->user($hash)`:
 
 | Resource | n | Methods |
@@ -143,9 +145,13 @@ User scope — `Ux2Dev\Iris\Resources\User\` (33 methods), reached via
 | `bulkPayments()` | 4 | create, createIban, createBudget, createBudgetIban |
 | `agent()` | 4 | createToken, delete, sendAisEmail, kycStatus |
 | `reports()` | 1 | listPayments |
-| `consentGate()` | 1 | uiConsentRequest |
+| `consentGate()` | 2 | uiConsentRequest, getConsents |
 
-23 + 33 = 56, matching the current method count exactly.
+22 + 34 = 56, matching the current method count exactly. `getConsents` sits
+under user scope rather than root: it hits `/api/cgate/consents-request/{userHash}`,
+which is keyed by user, so dropping the `{userHash}` segment to fit the
+original root/user split would have named a different endpoint, not the same
+one at a different scope.
 
 Four resources hold only one or two methods. They exist for symmetry: keeping
 the same names at both levels means a new endpoint has one obvious home. For a
